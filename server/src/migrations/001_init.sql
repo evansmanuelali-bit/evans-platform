@@ -1,0 +1,59 @@
+CREATE TABLE IF NOT EXISTS users (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  name TEXT NOT NULL,
+  password_hash TEXT NOT NULL,
+  role TEXT NOT NULL DEFAULT 'CLIENT' CHECK (role IN ('ADMIN', 'CLIENT')),
+  status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'blocked')),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE UNIQUE INDEX IF NOT EXISTS users_name_lower ON users (lower(name));
+
+CREATE TABLE IF NOT EXISTS sessions (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  token_hash TEXT NOT NULL UNIQUE,
+  expires_at TIMESTAMPTZ NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS sessions_user_idx ON sessions (user_id);
+
+CREATE TABLE IF NOT EXISTS conversations (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  customer_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  admin_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE (customer_id, admin_id)
+);
+CREATE INDEX IF NOT EXISTS conversations_customer_idx ON conversations (customer_id);
+
+CREATE TABLE IF NOT EXISTS messages (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  conversation_id BIGINT NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
+  sender_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  content TEXT NOT NULL DEFAULT '',
+  message_type TEXT NOT NULL DEFAULT 'text' CHECK (message_type IN ('text', 'image')),
+  attachment_url TEXT,
+  read_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS messages_conversation_idx ON messages (conversation_id, id DESC);
+
+CREATE TABLE IF NOT EXISTS media (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  file_url TEXT NOT NULL,
+  file_type TEXT NOT NULL,
+  file_size INTEGER NOT NULL DEFAULT 0,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS audit_logs (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  user_id BIGINT REFERENCES users(id) ON DELETE SET NULL,
+  action TEXT NOT NULL,
+  metadata JSONB NOT NULL DEFAULT '{}',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);

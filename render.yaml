@@ -1,0 +1,25 @@
+services:
+  - type: web
+    name: evans-platform
+    runtime: node
+    plan: free
+    buildCommand: npm --prefix server install && npm --prefix client install && npm --prefix client run build
+    startCommand: node server/src/index.js
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PGSSL
+        value: "true"
+      - key: SESSION_DAYS
+        value: "7"
+      - key: ADMIN_NAME
+        value: admin
+      # Crie a variavel ADMIN_PASSWORD no painel do Render (nao commitar senha)
+      - key: ADMIN_PASSWORD
+        sync: false
+      - key: DATABASE_URL
+        sync: false
+
+# Opcional (recomendado): disco persistente para os uploads nao sumirem em cada deploy.
+# No painel do Render: add Disk -> mount path /var/data -> e defina UPLOADS_DIR=/var/data/uploads
